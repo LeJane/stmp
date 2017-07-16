@@ -134,4 +134,9 @@ This message **MAYBE** contains `PAYLOAD` field, **MUST NOT** contains `ID` fiel
 
 This means a response message for a `Request Message`, the `ID` must same to the request.
 
-This message **MAYBE** contains `PAYLOAD`, **MUST NOT** contains `ACTION` field, and **MUST** contains `ID` field.
+This message **MAYBE** contains `PAYLOAD`, **MUST NOT** contains `ACTION` field, and **MUST** contains `ID` and `STATUS` field.
+
+
+## License
+
+MIT
