@@ -7,6 +7,10 @@ The simplest message protocol.
 Currently, the most popular message protocol in embed devices is MQTT, but it is so complex to handle `QoS`. This
 protocol removed this feature, just use for send data, the `QoS` should be managed by the top application.
 
+## Version
+
+Current is `0.1`, drafting.
+
 ## Protocol
 
 ### Fixed Header
@@ -14,7 +18,7 @@ protocol removed this feature, just use for send data, the `QoS` should be manag
 The fixed header include `1` byte, the definition and size as follow:
 
     |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |
-    |     KIND      |   WP  |  WPS  |           Encoding            |
+    |     KIND      |   WP  |  WPS  |       Encoding        |   0   |
 
 The means of each field as follow:
 
@@ -48,21 +52,21 @@ If this field is `1`, The `WP` field **MUST** be `1`.
 
 #### Encoding
 
-4bit, this means the payload encoding type, just like `Content-Type` in HTTP protocol, but this is a flag to
+3bit, this means the payload encoding type, just like `Content-Type` in HTTP protocol, but this is a flag to
 represent it. This field means maybe different in different sense, according to the two peer how to comprehend it.
 But there is some reserved values as follow:
 
-- `0b0000`: Reserved, means the payload is a raw binary bytes
-- `0b0001`: Protocol Buffers, see [Protocol Buffers](https://developers.google.com/protocol-buffers/)
-- `0b0010`: JSON, see [JSON](http://www.json.org)
-- `0b0011`: MessagePack, see [MessagePack](http://msgpack.org/index.html)
-- `0b0100`: BSON, see [BSON](http://bsonspec.org/)
+- `0`: Reserved, means the payload is a raw binary bytes
+- `1`: Protocol Buffers, see [Protocol Buffers](https://developers.google.com/protocol-buffers/)
+- `2`: JSON, see [JSON](http://www.json.org)
+- `3`: MessagePack, see [MessagePack](http://msgpack.org/index.html)
+- `4`: BSON, see [BSON](http://bsonspec.org/)
 
 ### Optional headers
 
 If any field of the follow headers exists, **SHOULD** arrange in the follow order.
 
-#### MID
+#### ID
 
 2bytes, the message id, from `0x0000` to `0xFFFF`, this is determined by the `KIND` field
 
@@ -70,6 +74,30 @@ If any field of the follow headers exists, **SHOULD** arrange in the follow orde
 
 4bytes, the asking action id, from `0x00000000` to `0xFFFFFFFF`, this is use for application to distinguish the
 request resource.
+
+#### STATUS
+
+1byte, the response status code, from `0x00` to `0xFF`, this is use for response message, the codes from `0x00` to `0x7F`
+is reserved for internal usages. And the codes from `0x80` to `0xFF` is user defined. The reserved code list as follow:
+(just change the code value from http)
+
+- `0x00`: Ok, 200
+- `0x10`: MovedPermanently, 301
+- `0x11`: Found, 302
+- `0x12`: NotModified, 304
+- `0x20`: BadRequest, 400
+- `0x21`: Unauthorized, 401
+- `0x22`: PaymentRequired, 402
+- `0x23`: Forbidden, 403
+- `0x24`: NotFound, 404
+- `0x25`: RequestTimeout, 408
+- `0x26`: RequestEntityTooLarge, 413
+- `0x27`: TooManyRequests, 429
+- `0x30`: InternalServerError, 500
+- `0x31`: NotImplemented, 501
+- `0x32`: BadGateway, 502
+- `0x33`: ServiceUnavailable, 503
+- `0x34`: GatewayTimeout, 504
 
 #### PS
 
@@ -92,18 +120,18 @@ this peer in time, **MUST** close the connection immediately.
 This means a request from a peer, the other peer should send response to the peer in time, if the response is timeout,
 the peer should emit a timeout error to application.
 
-This message **MAYBE** contains `PAYLOAD`, and **MUST** contains `MID` and `ACTION` field.
+This message **MAYBE** contains `PAYLOAD`, and **MUST** contains `ID` and `ACTION` field.
 
-A peer received this message must send a `Response Message` to the other peer, and the `MID` is same to the message.
+A peer received this message must send a `Response Message` to the other peer, and the `ID` is same to the message.
 
 #### Notify Message
 
 This means a notify message from a peer, the other peer should not response to the peer.
 
-This message **MAYBE** contains `PAYLOAD` field, **MUST NOT** contains `MID` field, and **MUST** contains `ACTION` field.
+This message **MAYBE** contains `PAYLOAD` field, **MUST NOT** contains `ID` field, and **MUST** contains `ACTION` field.
 
 #### Response Message
 
-This means a response message for a `Request Message`, the `MID` must same to the request.
+This means a response message for a `Request Message`, the `ID` must same to the request.
 
-This message **MAYBE** contains `PAYLOAD`, **MUST NOT** contains `ACTION` field, and **MUST** contains `MID` field.
+This message **MAYBE** contains `PAYLOAD`, **MUST NOT** contains `ACTION` field, and **MUST** contains `ID` field.
