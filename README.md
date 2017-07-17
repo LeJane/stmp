@@ -13,12 +13,17 @@ Current is `0.1`, drafting.
 
 ## Protocol
 
+### Basement
+
+1. All strings encoded by UTF-8.
+2. All multi-bytes flags use BE format.
+
 ### Fixed Header
 
 The fixed header include `1` byte, the definition and size as follow:
 
     |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |
-    |     KIND      |   WP  |  WPS  |       Encoding        |   0   |
+    |     KIND      |   WP  |  WPS  |       ENCODING        |   0   |
 
 The means of each field as follow:
 
@@ -38,7 +43,7 @@ The means of each field as follow:
 - `0b0`: without payload
 - `0b1`: with payload
 
-If this field is `0`, The `WPS` field **MUST** be `0`, and the `Encoding` field must be `0000`
+If this field is `0`, The `WPS` field **MUST** be `0`, and the `ENCODING` field must be `0000`
 
 #### WPS
 
@@ -50,7 +55,7 @@ some protocol contains message size already.
 
 If this field is `1`, The `WP` field **MUST** be `1`.
 
-#### Encoding
+#### ENCODING
 
 3bit, this means the payload encoding type, just like `Content-Type` in HTTP protocol, but this is a flag to
 represent it. This field means maybe different in different sense, according to the two peer how to comprehend it.
@@ -105,7 +110,7 @@ is reserved for internal usages. And the codes from `0x80` to `0xFF` is user def
 
 #### PAYLOAD
 
-The size is determined by `PS` field, the format is determined by `Encoding` field.
+The size is determined by `PS` field, the format is determined by `ENCODING` field.
 
 ### Messages
 
@@ -136,6 +141,40 @@ This means a response message for a `Request Message`, the `ID` must same to the
 
 This message **MAYBE** contains `PAYLOAD`, **MUST NOT** contains `ACTION` field, and **MUST** contains `ID` and `STATUS` field.
 
+## Texture Protocol
+
+Sometimes, specially, in browser, the environment does not support manipulate bytes directly, or the performance is
+poor. So use string is better rather than binary(in this case is Uint8Array). So, this is a special case to handle it.
+
+The case includes the following features could use this:
+
+1. The network protocol could distinguish binary/string message directly.
+2. The environment could handle UTF-8 encoded string.
+
+### Message structure
+
+If the message is a binary bytes, is same to upon, else the message should be:
+
+All fields and message types is same to upon, and we just need to change the serialize result.
+
+All fields is joined by string `|`, that means a full message format is follow:
+
+```text
+KIND(1)|WP(1)|WPS(1)|ENCODING(1)|0|ID(1-5)|ACTION(1-10)|STATUS(1-3)|PS(1-10)|PAYLOAD(...)
+```
+
+For a specified kind of message, some fields maybe not exists, and that field will not exist in the text. For example,
+for a `Request Message`, without `PAYPLOAD` and `PS`, the message should be as follow:
+
+```text
+1|0|0|ENCODING|0|ID|ACTION
+```
+
+Specially, for a `Ping Message` all field is `0`, So, a `Ping Message` should be serialized as a 1 byte string `0`.
+
+```text
+0
+```
 
 ## License
 
