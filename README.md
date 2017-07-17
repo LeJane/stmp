@@ -10,7 +10,10 @@ upper application.
 
 ## Version
 
-Current is `0.1`, drafting.
+The version contains two fields: `MAJOR` and `MINOR`. Each one field ranges from `0` to `15`, `0` to `0xF` in hex.
+And could be print as string in format `MAJOR.MINOR`.
+
+The version is `0.1` currently, in drafting.
 
 ## Message Fields
 
@@ -50,7 +53,7 @@ If this field is `1`, The `WP` field **MUST** be `1`.
 represent it. This field means maybe different in different sense, according to the two peer how to comprehend it.
 But there is some reserved values as follow:
 
-- `0`: Reserved, means the payload is a raw binary bytes
+- `0`: Raw, means the payload is a raw binary bytes or string
 - `1`: Protocol Buffers, see [Protocol Buffers](https://developers.google.com/protocol-buffers/)
 - `2`: JSON, see [JSON](http://www.json.org)
 - `3`: MessagePack, see [MessagePack](http://msgpack.org/index.html)
@@ -65,6 +68,10 @@ But there is some reserved values as follow:
 
 **Optional**, the request action id, from `0x00000000` to `0xFFFFFFFF`, this is use for application to distinguish the
 request resource.
+
+Some actions is reserved:
+
+- `0x00`: CheckVersion, this is use for check the protocol version.
 
 #### STATUS
 
@@ -89,6 +96,7 @@ code list as follow: (just change the code value from http)
 - `0x32`: BadGateway, 502
 - `0x33`: ServiceUnavailable, 503
 - `0x34`: GatewayTimeout, 504
+- `0x35`: VersionNotSupported, 505
 
 ### PS
 
@@ -200,6 +208,28 @@ first byte must be one of the following case:
 be `0x00`, else the first 2 bits **MUST NOT** be `0x00`, so the value must greater than `0b01000000`, `0x40` in hex.
 
 So, the first byte of one message is enough to distinguish texture and binary message.
+
+## Actions
+
+Some actions is reserved for protocol internal usage.
+
+### Check Version 0x00
+
+When the connection established, the client must send a `Request Message` with `Check Version` action to check version,
+the payload of the request is the version list that the client could handle. The server must response a `Ok`
+message to the client if it could handle one of the versions sent by client when the server receive the request. If not,
+the server must response a `VersionNotSupported` message to the client and then close the connection.
+
+The `Check Version Request Message` and the response's `ENCODING` **MUST** be `Raw`. The payload is concat the version
+list directly.
+
+### Serialize Protocol Version
+
+If the message is binary, a version should cost 1 byte, the first 4 bits is the `MAJOR` field and the last 4 bits is
+the `MINOR` version, both range from `0x0` to `0xF`.
+
+If the message is texture, a version should cost 2 bytes, the first byte is the `MAJOR` field and the last byte is the
+`MINOR` version, both range from `'0'` to `'F'`, case insensitive.
 
 ## License
 
