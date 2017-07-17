@@ -69,7 +69,7 @@ But there is some reserved values as follow:
 **Optional**, the request action id, from `0x00000000` to `0xFFFFFFFF`, this is use for application to distinguish the
 request resource.
 
-Some actions is reserved:
+Actions from `0x00` to `0xFF` is reserved, some of those is using now, and list as follow:
 
 - `0x00`: CheckVersion, this is use for check the protocol version.
 
