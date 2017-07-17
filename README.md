@@ -11,7 +11,7 @@ protocol removed this feature, just use for send data, the `QoS` should be manag
 
 Current is `0.1`, drafting.
 
-## Protocol
+## Binary Protocol
 
 ### Basement
 
@@ -175,6 +175,18 @@ Specially, for a `Ping Message` all field is `0`, So, a `Ping Message` should be
 ```text
 0
 ```
+
+## Distinguish Texture and Binary Protocol
+
+As the protocol definitions. If a message is texture, the first byte must be one of the chars
+`'0'`, `'1'`, `'2'`, `'3'`, which means `0x30`, `0x31`, `0x32`, `0x33` in hex. And if a message is binary, the
+first byte must be one of the following case:
+
+- be `0x00`, this is a ping message
+- greater than `0b01000000`, the first 2 bits is the flag of `KIND`, if is `Ping Message`, the entire byte **MUST**
+be `0x00`, else the first 2 bits **MUST NOT** be `0x00`, so the value must greater than `0b01000000`, `0x40` in hex.
+
+So, the first byte of one message is enough to distinguish texture and binary message.
 
 ## License
 
