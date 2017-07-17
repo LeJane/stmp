@@ -33,7 +33,7 @@ const (
 const (
 	StatusOk byte = 0x00
 
-	StatusMovedPermantently = 0x10
+	StatusMovedPermanently = 0x10
 	StatusFound = 0x11
 	StatusNotModified = 0x12
 
