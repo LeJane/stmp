@@ -29,24 +29,18 @@ the following headers exists, **MUST** be arranged in the following order.
 - `2`: `Notify Message`
 - `3`: `Response Message`
 
-### WP
-
-**Required**, with payload or not, the values means as follow:
-
-- `0`: without payload
-- `1`: with payload
-
 ### ENCODING
 
 **Required**, this means the payload encoding type, just like `Content-Type` in HTTP protocol, but this is a flag to
 represent it. This field means maybe different in different sense, according to the two peer how to comprehend it.
 But there is some reserved values as follow:
 
-- `0`: Raw, means the payload is a raw binary bytes or string
+- `0`: Reserved, means **without payload**
 - `1`: Protocol Buffers, see [Protocol Buffers](https://developers.google.com/protocol-buffers/)
 - `2`: JSON, see [JSON](http://www.json.org)
 - `3`: MessagePack, see [MessagePack](http://msgpack.org/index.html)
 - `4`: BSON, see [BSON](http://bsonspec.org/)
+- `5`: Raw, means the payload is a raw binary bytes or string
 
 ### ID
 
@@ -89,12 +83,13 @@ code list as follow: (just change the code value from http)
 ### PS
 
 **Optional**, the payload size, from `0x00000000` to `0xFFFFFFFF`, this is determined by the network protocol
-environment, so this is a configure option when parse/serialize a message.
+environment, so this is a configure option when parse/serialize a message. If a message without payload (`ENCODING`
+is `0`), this field **SHOULD NOT** exists in any protocol.
 
 ### PAYLOAD
 
-**Optional**, the size is determined by `PS` field, the format is determined by `ENCODING` field.
-
+**Optional**, the size is determined by `ENCODING` field, if it is `0`, this field should not exists, else should
+be marshaled by the codec bind to the `ENCODING` type.
 
 ## Messages
 
@@ -149,7 +144,7 @@ header. If the field should not exists, it will not exist, and the follow-up fie
 The fixed header structure as follow:
 
     |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |
-    |     KIND      |   WP  |       ENCODING        |   0   |   0   |
+    |     KIND      |       ENCODING        |   0   |   0   |   0   |
     
 The last one bit is reserved because it is useless currently.
 
@@ -170,14 +165,14 @@ All fields and message types is same to upon, and we just need to change the ser
 All fields is joined by string `|`, that means a full message format is follow:
 
 ```text
-KIND(1)|WP(1)|ENCODING(1)|ID(1-5)|ACTION(1-10)|STATUS(1-3)|PS(1-10)|PAYLOAD(...)
+KIND(1)|ENCODING(1)|ID?(1-5)|ACTION?(1-10)|STATUS?(1-3)|PS?(1-10)|PAYLOAD?(...)
 ```
 
 For a specified kind of message, some fields maybe not exists, and that field will not exist in the text. For example,
 for a `Request Message`, without `PAYPLOAD` and `PS`, the message should be as follow:
 
 ```text
-1|0|ENCODING|ID|ACTION
+1|0|ID|ACTION
 ```
 
 Specially, for a `Ping Message` all field is `0`, So, a `Ping Message` should be serialized as a 1 byte string `'0'`.
