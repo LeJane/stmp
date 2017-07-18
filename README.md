@@ -36,17 +36,6 @@ the following headers exists, **MUST** be arranged in the following order.
 - `0`: without payload
 - `1`: with payload
 
-If this field is `0`, The `WPS` field **MUST** be `0`.
-
-#### WPS
-
-**Required**, with `PS` field or not, some network protocols contains message size already.
-
-- `0`: without payload size
-- `1`: with payload size
-
-If this field is `1`, The `WP` field **MUST** be `1`.
-
 ### ENCODING
 
 **Required**, this means the payload encoding type, just like `Content-Type` in HTTP protocol, but this is a flag to
@@ -58,7 +47,6 @@ But there is some reserved values as follow:
 - `2`: JSON, see [JSON](http://www.json.org)
 - `3`: MessagePack, see [MessagePack](http://msgpack.org/index.html)
 - `4`: BSON, see [BSON](http://bsonspec.org/)
-
 
 ### ID
 
@@ -100,7 +88,8 @@ code list as follow: (just change the code value from http)
 
 ### PS
 
-**Optional**, the payload size, from `0x00000000` to `0xFFFFFFFF`, this is determined by the `WPS` field.
+**Optional**, the payload size, from `0x00000000` to `0xFFFFFFFF`, this is determined by the network protocol
+environment, so this is a configure option when parse/serialize a message.
 
 ### PAYLOAD
 
@@ -136,7 +125,7 @@ This means a response message for a `Request Message`, the `ID` must same to the
 
 This message **MAYBE** contains `PAYLOAD` and `PS`, **MUST NOT** contains `ACTION`, **MUST** contains `ID` and `STATUS`.
 
-## Binary Protocol
+## Binary Message Protocol
 
 In most cases, the message protocol is use for embed device, the environment could handle bytes easily, and
 serialize payload with binary protocol just like Protocol Buffers, MessagePack is fast. The protocol use binary
@@ -160,7 +149,7 @@ header. If the field should not exists, it will not exist, and the follow-up fie
 The fixed header structure as follow:
 
     |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |
-    |     KIND      |   WP  |  WPS  |       ENCODING        |   0   |
+    |     KIND      |   WP  |       ENCODING        |   0   |   0   |
     
 The last one bit is reserved because it is useless currently.
 
@@ -181,14 +170,14 @@ All fields and message types is same to upon, and we just need to change the ser
 All fields is joined by string `|`, that means a full message format is follow:
 
 ```text
-KIND(1)|WP(1)|WPS(1)|ENCODING(1)|ID(1-5)|ACTION(1-10)|STATUS(1-3)|PS(1-10)|PAYLOAD(...)
+KIND(1)|WP(1)|ENCODING(1)|ID(1-5)|ACTION(1-10)|STATUS(1-3)|PS(1-10)|PAYLOAD(...)
 ```
 
 For a specified kind of message, some fields maybe not exists, and that field will not exist in the text. For example,
 for a `Request Message`, without `PAYPLOAD` and `PS`, the message should be as follow:
 
 ```text
-1|0|0|ENCODING|ID|ACTION
+1|0|ENCODING|ID|ACTION
 ```
 
 Specially, for a `Ping Message` all field is `0`, So, a `Ping Message` should be serialized as a 1 byte string `'0'`.
