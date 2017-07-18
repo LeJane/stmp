@@ -59,8 +59,8 @@ MIT
 
 ## TODO
 
-[ ] texture implements
-[ x ] test
-[ ] context
-[ ] server
-[ ] client
+- [ ] texture implements
+- [x] test
+- [ ] context
+- [ ] server
+- [ ] client

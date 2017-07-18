@@ -153,7 +153,7 @@ The fixed header structure as follow:
     
 The last one bit is reserved because it is useless currently.
 
-## Texture Protocol
+## Texture Message Protocol
 
 Sometimes, specially, in browser, the environment does not support manipulate bytes directly, or the performance is
 poor. So use string is better rather than binary(in this case is Uint8Array). So, this is a special case to handle it.
@@ -186,7 +186,7 @@ Specially, for a `Ping Message` all field is `0`, So, a `Ping Message` should be
 0
 ```
 
-## Distinguish Texture and Binary Protocol
+## Distinguish Texture and Binary Message
 
 As the protocol definitions. If a message is texture, the first byte must be one of the chars
 `'0'`, `'1'`, `'2'`, `'3'`, which means `0x30`, `0x31`, `0x32`, `0x33` in hex. And if a message is binary, the
