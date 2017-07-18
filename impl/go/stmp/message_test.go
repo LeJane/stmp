@@ -4,6 +4,53 @@ import (
 	"testing"
 	"."
 	"github.com/stretchr/testify/assert"
+	"bytes"
+)
+
+type Inst struct {
+	msg *stmp.Message
+	wps []byte
+	nps []byte
+}
+
+var (
+	okCases = map[string]Inst{
+		"ping": {
+			&stmp.Message{stmp.KindPing, 0, 0, 0, 0, 0, 0, nil, nil},
+			[]byte{0},
+			[]byte{0},
+		},
+		"request:!PAYLOAD": {
+			&stmp.Message{stmp.KindRequest, 0, stmp.EncodingRaw, 0x01DA, 0x00F10CD2, 0, 0, nil, nil},
+			[]byte{stmp.KindRequest, 0x01, 0xDA, 0x00, 0xF1, 0x0C, 0xD2},
+			[]byte{stmp.KindRequest, 0x01, 0xDA, 0x00, 0xF1, 0x0C, 0xD2},
+		},
+		"request": {
+			&stmp.Message{stmp.KindRequest, stmp.FlagWp, stmp.EncodingJson, 0x1234, 0x12345678, 0, 6, []byte("1.2345"), nil},
+			[]byte{stmp.KindRequest | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindRequest | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
+		},
+		"notify:!PAYLOAD": {
+			&stmp.Message{stmp.KindNotify, 0, 0, 0, 0x12345678, 0, 0, nil, nil},
+			[]byte{stmp.KindNotify, 0x12, 0x34, 0x56, 0x78},
+			[]byte{stmp.KindNotify, 0x12, 0x34, 0x56, 0x78},
+		},
+		"notify": {
+			&stmp.Message{stmp.KindNotify, stmp.FlagWp, stmp.EncodingJson, 0, 0x12345678, 0, 6, []byte("1.2345"), nil},
+			[]byte{stmp.KindNotify | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindNotify | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
+		},
+		"response:!PAYLOAD": {
+			&stmp.Message{stmp.KindResponse, 0, 0, 0x1234, 0, stmp.StatusOk, 0, nil, nil},
+			[]byte{stmp.KindResponse, 0x12, 0x34, stmp.StatusOk},
+			[]byte{stmp.KindResponse, 0x12, 0x34, stmp.StatusOk},
+		},
+		"response": {
+			&stmp.Message{stmp.KindResponse, stmp.FlagWp, stmp.EncodingJson, 0x1234, 0, stmp.StatusOk, 6, []byte("1.2345"), nil},
+			[]byte{stmp.KindResponse | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindResponse | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, '1', '.', '2', '3', '4', '5'},
+		},
+	}
 )
 
 func TestProtocolVersion(t *testing.T) {
@@ -14,21 +61,20 @@ func TestProtocolVersion(t *testing.T) {
 	assert.Equal(t, "0.1", stmp.StmpVersion.String(), "stringify")
 }
 
-func TestParseBinary(t *testing.T) {
-	msg, err := stmp.ParseBinary([]byte{0})
-	assert.Equal(t, nil, err, "parse ping ok")
-	assert.Equal(t, stmp.KindPing, msg.Kind, "PING KIND")
-	msg, err = stmp.ParseBinary([]byte{
-		stmp.KindRequest | stmp.FlagWp | stmp.FlagWps | stmp.EncodingRaw, // Flags
-		0xFC, 0xD1, // ID
-		0x10, 0xFF, 0xDC, 0xF0, // ACTION
-		0, 0, 0, 1, // PS
-		0x30, // PAYLOAD
-	})
-	assert.Equal(t, nil, err, "parse REQ|WP|WPS|RAW ok")
-	assert.Equal(t, stmp.KindRequest, msg.Kind, "REQ KIND")
-	assert.Equal(t, uint16(0xFCD1), msg.Id, "REQ ID")
-	assert.Equal(t, uint32(0x10FFDCF0), msg.Action, "REQ ACTION")
-	assert.Equal(t, uint32(1), msg.PayloadSize, "REQ PS")
-	assert.Equal(t, []byte{'0'}, msg.Payload, "REQ PAYLOAD")
+func TestMessage(t *testing.T) {
+	for name, inst := range okCases {
+		msg, err := stmp.ReadBinary(bytes.NewBuffer(inst.wps))
+		assert.Nil(t, err, name + ": read wps error")
+		assert.Equal(t, inst.msg, msg, name + ": read wps result")
+		msg, err = stmp.ParseBinary(inst.wps, true)
+		assert.Nil(t, err, name + ": parse wps error")
+		assert.Equal(t, inst.msg, msg, name + ": parse wps result")
+		msg, err = stmp.ParseBinary(inst.nps, false)
+		assert.Nil(t, err, name + ": parse nps error")
+		assert.Equal(t, inst.msg, msg, name + ": parse nps result")
+		buf := stmp.SerializeBinary(msg, true)
+		assert.Equal(t, inst.wps, buf, name + ": serialize wps")
+		buf = stmp.SerializeBinary(inst.msg, false)
+		assert.Equal(t, inst.nps, buf, name + ": serialize nps")
+	}
 }

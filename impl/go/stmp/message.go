@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	PosEncoding byte = 1
-	PosWps byte = 4
+	PosEncoding byte = 2
 	PosWp byte = 5
 	PosKind byte = 6
 )
@@ -17,7 +16,6 @@ const (
 const (
 	// golang does not support binary integer literal currently
 	FlagEncoding byte = 7 << PosEncoding
-	FlagWps byte = 1 << PosWps
 	FlagWp byte = 1 << PosWp
 	FlagKind byte = 3 << PosKind
 )
@@ -58,26 +56,25 @@ const (
 	StatusBadGateway byte = 0x32
 	StatusServiceUnavailable byte = 0x33
 	StatusGatewayTimeout byte = 0x34
+	VersionNotSupported byte = 0x35
 )
 
 type Message struct {
-	Kind            byte
-	WithPayload     byte
-	WithPayloadSize byte
-	Encoding        byte
-	Id              uint16
-	Action          uint32
-	Status          byte
-	PayloadSize     uint32
-	Payload         []byte
-	Data            interface{}
+	Kind        byte
+	WithPayload byte
+	Encoding    byte
+	Id          uint16
+	Action      uint32
+	Status      byte
+	PayloadSize uint32
+	Payload     []byte
+	Data        interface{}
 }
 
 var (
 	PingMessage = &Message{
 		Kind: KindPing,
 		WithPayload: 0,
-		WithPayloadSize: 0,
 		Encoding: EncodingRaw,
 		Id: 0,
 		Action: 0,
@@ -86,7 +83,6 @@ var (
 		Payload: nil,
 		Data: nil,
 	}
-
 	PingBytes = []byte{0}
 	PingTexture = []byte{'0'}
 )
@@ -155,29 +151,30 @@ func ParseTextureVersions(input []byte) []*ProtocolVersion {
 	return output
 }
 
-func NewMessage(kind, wps, encoding byte, id uint16, action uint32, payload interface{}) *Message {
+func NewMessage(kind byte, encoding byte, id uint16, action uint32, data interface{}) *Message {
 	return &Message{
 		Kind: kind,
 		WithPayload: 0, // This will be determined by the serialize result
-		WithPayloadSize: wps,
 		Encoding: encoding,
 		Id: id,
 		Action: action,
 		Status: StatusOk,
 		PayloadSize: 0,
 		Payload: nil,
-		Data: payload,
+		Data: data,
 	}
 }
 
-func ReadBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
+// read binary message from a reader
+// this must with payload size, because we cannot
+// split multi-message automatically
+func readBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 	kind := header & FlagKind
 	if kind == KindPing {
 		// ping message
 		return PingMessage, nil
 	}
 	wp := header & FlagWp
-	wps := header & FlagWps
 	// MUST be STMP_FLAG_WPS, else the payload will be ignored,
 	// because we cannot get the payload size from a reader
 	encoding := header & FlagEncoding
@@ -199,7 +196,7 @@ func ReadBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 			return
 		}
 		action = binary.BigEndian.Uint32(byte4)
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp {
 			if _, err = io.ReadFull(r, byte4); err != nil {
 				// PS
 				return
@@ -217,7 +214,7 @@ func ReadBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 			return
 		}
 		action = binary.BigEndian.Uint32(byte4)
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp {
 			if _, err = io.ReadFull(r, byte4); err != nil {
 				// PS
 				return
@@ -240,7 +237,7 @@ func ReadBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 			return
 		}
 		status = byte4[0]
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp {
 			if _, err = io.ReadFull(r, byte4); err != nil {
 				// PS
 				return
@@ -256,7 +253,6 @@ func ReadBinaryWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 	msg = &Message{
 		Kind: kind,
 		WithPayload: wp,
-		WithPayloadSize: wps,
 		Encoding: encoding,
 		Id: id,
 		Action: action,
@@ -275,11 +271,11 @@ func ReadBinary(r io.Reader) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ReadBinaryWithHeader(r, byte1[0])
+	return readBinaryWithHeader(r, byte1[0])
 }
 
 // read a message with texture protocol
-func ReadTextureWithHeader(r io.Reader, header byte) (msg *Message, err error) {
+func readTextureWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 	kind := (header - 0x30) << 6
 	if kind == KindPing {
 		return PingMessage, nil
@@ -293,6 +289,7 @@ func ReadTextureWithHeader(r io.Reader, header byte) (msg *Message, err error) {
 }
 
 // auto distinguish binary and texture
+// read message from a message must contains PS field
 func Read(r io.Reader) (*Message, error) {
 	byte1 := make([]byte, 1)
 	_, err := io.ReadFull(r, byte1)
@@ -301,14 +298,14 @@ func Read(r io.Reader) (*Message, error) {
 	}
 	header := byte1[0]
 	if header < 0x40 && header != 0x00 {
-		return ReadTextureWithHeader(r, header)
+		return readTextureWithHeader(r, header)
 	} else {
-		return ReadBinaryWithHeader(r, header)
+		return readBinaryWithHeader(r, header)
 	}
 }
 
 // parse from a message
-func ParseBinary(data []byte) (msg *Message, err error) {
+func ParseBinary(data []byte, wps bool) (msg *Message, err error) {
 	size := uint32(len(data))
 	if size == 0 {
 		err = ErrInputTooShort
@@ -320,7 +317,6 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 		return PingMessage, nil
 	}
 	wp := fixed & FlagWp
-	wps := fixed & FlagWps
 	encoding := fixed & FlagEncoding
 	var id uint16
 	var action uint32
@@ -333,7 +329,7 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 			// FIXED+MID+ACTION(1+2+4)
 			return nil, ErrInputTooShort
 		}
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp && wps {
 			if size < 11 {
 				// +PS(4)
 				return nil, ErrInputTooShort
@@ -354,7 +350,7 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 		if size < 5 {
 			return nil, ErrInputTooShort
 		}
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp && wps {
 			if size < 9 {
 				return nil, ErrInputTooShort
 			}
@@ -372,18 +368,18 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 		if size < 4 {
 			return nil, ErrInputTooShort
 		}
-		if wp == FlagWp && wps == FlagWps {
+		if wp == FlagWp && wps {
 			if size < 8 {
 				return nil, ErrInputTooShort
 			}
-			ps = binary.BigEndian.Uint32(data[3:])
+			ps = binary.BigEndian.Uint32(data[4:])
 			if size < 8 + ps {
 				return nil, ErrInputTooShort
 			}
-			payload = data[7:]
+			payload = data[8:]
 		} else if wp == FlagWp {
 			ps = size - 4
-			payload = data[3:]
+			payload = data[4:]
 		}
 		id = binary.BigEndian.Uint16(data[1:])
 		status = data[3]
@@ -391,7 +387,6 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 	msg = &Message{
 		Kind: kind,
 		WithPayload: wp,
-		WithPayloadSize: wps,
 		Encoding: encoding,
 		Id: id,
 		Action: action,
@@ -404,31 +399,32 @@ func ParseBinary(data []byte) (msg *Message, err error) {
 }
 
 // parse a message by texture protocol
-func ParseTexture(data []byte) (msg *Message, err error) {
+func ParseTexture(data []byte, wps bool) (msg *Message, err error) {
 	// TODO
 	return
 }
 
-func Parse(data []byte) (*Message, error) {
+// wps: with PS field or not
+func Parse(data []byte, wps bool) (*Message, error) {
 	if data == nil || len(data) < 1 {
 		return nil, ErrInputTooShort
 	}
 	if data[0] < 0x40 && data[0] != 0x00 {
-		return ParseTexture(data)
+		return ParseTexture(data, wps)
 	} else {
-		return ParseBinary(data)
+		return ParseBinary(data, wps)
 	}
 }
 
 // serialize a message to binary
-// if len(payload) == 0 or msg.Payload == nil, the WP and WPS field will be set as 0,
-// else the WP field will be 1, the WPS field wil be set according to the msg.WithPayloadSize field value
-func SerializeBinary(msg *Message) []byte {
+// the PAYLOAD field is determined by the msg.WP, and the length is the msg.PS
+// the PS field is determined by the param wps, and the value is msg.PayloadSize
+func SerializeBinary(msg *Message, wps bool) []byte {
 	if msg.Kind == KindPing {
 		return PingBytes
 	}
 	bufSize := 1 + msg.PayloadSize
-	if msg.WithPayloadSize == FlagWps {
+	if msg.WithPayload == FlagWp && wps {
 		bufSize += 4
 	}
 	switch msg.Kind {
@@ -440,7 +436,7 @@ func SerializeBinary(msg *Message) []byte {
 		bufSize += 3
 	}
 	buf := make([]byte, bufSize)
-	buf[0] = msg.Kind | msg.WithPayload | msg.WithPayloadSize | msg.Encoding
+	buf[0] = msg.Kind | msg.WithPayload | msg.Encoding
 	switch msg.Kind {
 	case KindRequest:
 		binary.BigEndian.PutUint16(buf[1:], msg.Id)
@@ -451,10 +447,12 @@ func SerializeBinary(msg *Message) []byte {
 		binary.BigEndian.PutUint16(buf[1:], msg.Id)
 		buf[3] = msg.Status
 	}
-	if msg.WithPayloadSize == FlagWps {
+	if msg.WithPayload == FlagWp && wps {
 		binary.BigEndian.PutUint32(buf[bufSize - msg.PayloadSize - 4:], msg.PayloadSize)
 	}
-	copy(buf[bufSize - msg.PayloadSize:], msg.Payload)
+	if msg.WithPayload == FlagWp {
+		copy(buf[bufSize - msg.PayloadSize:], msg.Payload)
+	}
 	return buf
 }
 
@@ -465,8 +463,8 @@ func SerializeTexture(msg *Message) (output []byte, err error) {
 	return
 }
 
-// marshal a message, and bind it to msg.Payload
-// auto update WP, PS field
+// marshal a message payload, and bind it to msg.Payload
+// and auto update WP, PS field
 func Marshal(msg *Message, codec Codec) error {
 	var err error
 	var ok bool
@@ -483,10 +481,11 @@ func Marshal(msg *Message, codec Codec) error {
 	if err == nil {
 		if msg.Payload == nil || len(msg.Payload) == 0 {
 			msg.WithPayload = 0
-			msg.WithPayloadSize = 0
+			msg.PayloadSize = 0
 			msg.Payload = nil
 		} else {
 			msg.WithPayload = FlagWp
+			msg.PayloadSize = uint32(len(msg.Payload))
 		}
 	}
 	return err
