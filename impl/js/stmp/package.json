@@ -1,0 +1,40 @@
+{
+  "name": "stmp",
+  "version": "0.0.1",
+  "description": "The simplest message protocol for any rpc server/client.",
+  "typings": "lib/index.d.ts",
+  "main": "lib/index.js",
+  "scripts": {
+    "prepublish": "node ./node_modules/.bin/tsc",
+    "test": "node ./node_modules/.bin/mocha --compilers ts:ts-node/register,tsx:ts-node/register --recursive ./src/**/*.spec.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acrazing/stmp.git"
+  },
+  "keywords": [
+    "simple",
+    "rpc",
+    "message",
+    "protocol"
+  ],
+  "author": "acrazing",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/acrazing/stmp/issues"
+  },
+  "homepage": "https://github.com/acrazing/stmp#readme",
+  "dependencies": {
+    "tslib": "^1.7.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.41",
+    "@types/node": "^8.0.13",
+    "@types/ws": "^3.0.2",
+    "mocha": "^3.4.2",
+    "ts-node": "^3.2.0",
+    "tslint": "^5.5.0",
+    "typescript": "^2.4.1",
+    "ws": "^3.0.0"
+  }
+}
