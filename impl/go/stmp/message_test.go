@@ -16,39 +16,39 @@ type Inst struct {
 var (
 	okCases = map[string]Inst{
 		"ping": {
-			&stmp.Message{stmp.KindPing, 0, 0, 0, 0, 0, 0, nil, nil},
+			stmp.NewBinMessage(stmp.KindPing, 0, 0, 0, 0, nil),
 			[]byte{0},
 			[]byte{0},
 		},
 		"request:!PAYLOAD": {
-			&stmp.Message{stmp.KindRequest, 0, stmp.EncodingRaw, 0x01DA, 0x00F10CD2, 0, 0, nil, nil},
+			stmp.NewBinMessage(stmp.KindRequest, 0, 0x01DA, 0x00F10CD2, 0, nil),
 			[]byte{stmp.KindRequest, 0x01, 0xDA, 0x00, 0xF1, 0x0C, 0xD2},
 			[]byte{stmp.KindRequest, 0x01, 0xDA, 0x00, 0xF1, 0x0C, 0xD2},
 		},
 		"request": {
-			&stmp.Message{stmp.KindRequest, stmp.FlagWp, stmp.EncodingJson, 0x1234, 0x12345678, 0, 6, []byte("1.2345"), nil},
-			[]byte{stmp.KindRequest | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
-			[]byte{stmp.KindRequest | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
+			stmp.NewBinMessage(stmp.KindRequest, stmp.EncodingJson, 0x1234, 0x12345678, 0, []byte("1.2345")),
+			[]byte{stmp.KindRequest | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindRequest | stmp.EncodingJson, 0x12, 0x34, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
 		},
 		"notify:!PAYLOAD": {
-			&stmp.Message{stmp.KindNotify, 0, 0, 0, 0x12345678, 0, 0, nil, nil},
+			stmp.NewBinMessage(stmp.KindNotify, 0, 0, 0x12345678, 0, nil),
 			[]byte{stmp.KindNotify, 0x12, 0x34, 0x56, 0x78},
 			[]byte{stmp.KindNotify, 0x12, 0x34, 0x56, 0x78},
 		},
 		"notify": {
-			&stmp.Message{stmp.KindNotify, stmp.FlagWp, stmp.EncodingJson, 0, 0x12345678, 0, 6, []byte("1.2345"), nil},
-			[]byte{stmp.KindNotify | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
-			[]byte{stmp.KindNotify | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
+			stmp.NewBinMessage(stmp.KindNotify, stmp.EncodingJson, 0, 0x12345678, 0, []byte("1.2345")),
+			[]byte{stmp.KindNotify | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindNotify | stmp.EncodingJson, 0x12, 0x34, 0x56, 0x78, '1', '.', '2', '3', '4', '5'},
 		},
 		"response:!PAYLOAD": {
-			&stmp.Message{stmp.KindResponse, 0, 0, 0x1234, 0, stmp.StatusOk, 0, nil, nil},
+			stmp.NewBinMessage(stmp.KindResponse, 0, 0x1234, 0, stmp.StatusOk, nil),
 			[]byte{stmp.KindResponse, 0x12, 0x34, stmp.StatusOk},
 			[]byte{stmp.KindResponse, 0x12, 0x34, stmp.StatusOk},
 		},
 		"response": {
-			&stmp.Message{stmp.KindResponse, stmp.FlagWp, stmp.EncodingJson, 0x1234, 0, stmp.StatusOk, 6, []byte("1.2345"), nil},
-			[]byte{stmp.KindResponse | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
-			[]byte{stmp.KindResponse | stmp.FlagWp | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, '1', '.', '2', '3', '4', '5'},
+			stmp.NewBinMessage(stmp.KindResponse, stmp.EncodingJson, 0x1234, 0, stmp.StatusOk, []byte("1.2345")),
+			[]byte{stmp.KindResponse | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, 0, 0, 0, 6, '1', '.', '2', '3', '4', '5'},
+			[]byte{stmp.KindResponse | stmp.EncodingJson, 0x12, 0x34, stmp.StatusOk, '1', '.', '2', '3', '4', '5'},
 		},
 	}
 )
